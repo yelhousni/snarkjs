@@ -184,7 +184,6 @@ describe("F12 testing", () => {
 });
 
 describe("Pairing", () => {
-/*
     it("Should match pairing", () => {
         for (let i=0; i<1; i++) {
             const bn128 = new BN128();
@@ -210,7 +209,6 @@ describe("Pairing", () => {
             assert(bn128.F12.equals(res, bn128.F12.one));
         }
     }).timeout(10000);
-*/
     it("Should generate another pairing pairing", () => {
         for (let i=0; i<1; i++) {
             const bn128 = new BN128();
@@ -234,21 +232,55 @@ describe("Pairing", () => {
             const r4 = bn128.finalExponentiation(r3);
 
 
+            /*
             console.log("ML1: " ,r1[0][0][0].affine(bn128.q).toString(16));
             console.log("FE1: " ,r2[0][0][0].affine(bn128.q).toString(16));
             console.log("ML2: " ,r3[0][0][0].affine(bn128.q).toString(16));
             console.log("FE2: " ,r4[0][0][0].affine(bn128.q).toString(16));
+            */
 
             assert(bn128.F12.equals(r2, r4));
 
 
-/*            const r2 = bn128.millerLoop(pre1b, pre2b);
+            const r5 = bn128.millerLoop(pre1b, pre2b);
 
-            const rbe = bn128.F12.mul(r1, bn128.F12.inverse(r2));
+            const rbe = bn128.F12.mul(r1, bn128.F12.inverse(r5));
 
             const res = bn128.finalExponentiation(rbe);
 
-            assert(bn128.F12.equals(res, bn128.F12.one)); */
+            assert(bn128.F12.equals(res, bn128.F12.one)); 
         }
     }).timeout(10000);
+    it("Should match naive and optimized final exp", () => {
+        const bn128 = new BN128();
+
+        // (q^12-1)/r
+        const final_exponent = bigInt("552484233613224096312617126783173147097382103762957654188882734314196910839907541213974502761540629817009608548654680343627701153829446747810907373256841551006201639677726139946029199968412598804882391702273019083653272047566316584365559776493027495458238373902875937659943504873220554161550525926302303331747463515644711876653177129578303191095900909191624817826566688241804408081892785725967931714097716709526092261278071952560171111444072049229123565057483750161460024353346284167282452756217662335528813519139808291170539072125381230815729071544861602750936964829313608137325426383735122175229541155376346436093930287402089517426973178917569713384748081827255472576937471496195752727188261435633271238710131736096299798168852925540549342330775279877006784354801422249722573783561685179618816480037695005515426162362431072245638324744480");
+      
+        // 2z(6z^2+3z+1)
+        const cofactor = bigInt("1469306990098747947464455738335385361638823152381947992820");
+
+        const g1 = bn128.G1.mulScalar(bn128.G1.g, 25);
+        const g2 = bn128.G2.mulScalar(bn128.G2.g, 30);
+
+        const pre1 = bn128.precomputeG1(g1);
+        const pre2 = bn128.precomputeG2(g2);
+
+        const r = bn128.millerLoop(pre1, pre2);
+
+        // naive FE
+        console.time("\t⏱  naive final exponentiation takes");
+        const res_naive = bn128.F12.exp(r, final_exponent);
+        console.timeEnd("\t⏱  naive final exponentiation takes");
+        const res_naive_cofac = bn128.F12.exp(res_naive, cofactor);
+
+        // optimized FE
+        console.time("\t⏱  optimized final exponentiation takes");
+        const res_opt = bn128.finalExponentiation(r);
+        console.timeEnd("\t⏱  optimized final exponentiation takes");
+
+        assert(bn128.F12.equals(res_opt, res_naive_cofac));
+
+    }).timeout(10000);
+
 });
